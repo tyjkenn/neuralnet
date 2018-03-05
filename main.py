@@ -2,9 +2,10 @@ import neuralnet as nn
 import pandas as pd
 from sklearn.model_selection import train_test_split
 import sys
-from sklearn.metrics import accuracy_score
+import matplotlib.pyplot as plt
+from sklearn.neural_network import MLPClassifier
 
-
+# prepares the iris dataset. Gives the data, targets and number of possible targets
 def prep_iris():
     data = pd.read_csv("iris.data.txt", dtype=None,
                        names=["sepalLength", "sepalWidth", "petalLength", "petalWidth", "class"])
@@ -16,6 +17,16 @@ def prep_iris():
     return data, target, 3
 
 
+# prepares the diabetes dataset. Gives the data, targets and number of possible targets
+def prep_diabetes():
+    data = pd.read_csv("diabetes.data.txt", dtype=None,
+                       names=["timesPreg", "plasGlu", "bloodPress", "skinFold", "serumIns",
+                             "bmi", "pedigree" , "age", "class"])
+    target = data["class"]
+    data = data.drop("class", axis=1)
+    return data, target, 2
+
+# Outputs all the weights of all the neurons
 def debug_weights(net):
     for layerI in range(len(net.layers)):
         print("Layer {}".format(layerI + 1))
@@ -25,19 +36,12 @@ def debug_weights(net):
                 print("\t\t{}. {}".format(weightI, net.layers[layerI][neuronI].weights[weightI]))
 
 
-def prep_diabetes():
-    data = pd.read_csv("diabetes.data.txt", dtype=None,
-                       names=["timesPreg", "plasGlu", "bloodPress", "skinFold", "serumIns",
-                             "bmi", "pedigree" , "age", "class"])
-    target = data["class"]
-    data = data.drop("class", axis=1)
-    return data, target, 2
-
-
+# Get choice from user
 print("1. Iris")
 print("2. Diabetes")
 choice = input("Pick one:")
 
+# Build neural net
 if choice == '1':
     data, target, class_count = prep_iris()
     net = nn.NeuralNet(.1, 4, [4, 3])
@@ -45,18 +49,20 @@ else:
     data, target, class_count = prep_diabetes()
     net = nn.NeuralNet(.1, 8, [8, 2])
 
+# normalize data and convert to python lists
 data = (data - data.mean()) / data.std()
 data = data.as_matrix().tolist()
 target = list(target)
-print(data)
-print(target)
 
-#debug_weights(net)
-
+# split into training and testing
 data_train, data_test, target_train, target_test = train_test_split(
     data, target, test_size=.3, train_size=.7, shuffle=True)
 
-for epoch in range(1):
+# train each epoch
+accuracies = []
+epochs = 0
+for epoch in range(300):
+    epochs += 1
     for i in range(len(data_train)):
         net.train(data_train[i], target_train[i])
     score = 0.0
@@ -70,6 +76,25 @@ for epoch in range(1):
     count_str = ""
     for i in range(class_count):
         count_str += "Class {}: {}, ".format(i, totals[i])
-    print("Epoch: {}, Accuracy: {}%, {}".format(epoch, score * 100, count_str))
+    sys.stdout.write("\rEpoch: {}, Accuracy: {}%, {}".format(epoch, score * 100, count_str))
+    accuracies.append(score * 100)
+    if score > .9:
+        break;
 
-#debug_weights(net)
+# visualize
+plt.plot(range(epochs), accuracies)
+plt.show()
+
+# compare to existing implementation
+clf = MLPClassifier(solver='lbfgs', alpha=1e-5,
+                    hidden_layer_sizes=4, random_state=1)
+
+clf.fit(data_train, target_train)
+predictions = clf.predict(data_test)
+score = 0.0
+for i in range(len(predictions)):
+    if predictions[i] == target_test[i]:
+        score += 1
+score /= len(predictions)
+print('')
+print('Existing implementation score:{}%'.format(score*100))

@@ -2,13 +2,18 @@ import random
 import math
 import copy
 
+# used for neuron output. If math.exp gives and
+# extremely large number, the result would approach
+# 0, but if would have an overflow error, so
+# just in case I would return 0
 def sigmoid(x):
     try:
         return 1 / (1 + math.exp(-x))
     except OverflowError:
         return 0
 
-
+# uses a bunch of weights and inputs and gives
+# a result (fires?) based on the sigmoid function
 class Neuron:
     weights = []
 
@@ -21,11 +26,13 @@ class Neuron:
             result += inputs[i] * self.weights[i]
         return sigmoid(result)
 
-
+# has a bunch of neurons that feed input to each other to
+# produce an output
 class NeuralNet:
     layers = []
     learning_rate = .1
 
+    # initialize with random weights
     def __init__(self, learn_rate, input_size, neuron_nums):
         self.learning_rate = learn_rate
         for neuron_num in neuron_nums:
@@ -36,6 +43,7 @@ class NeuralNet:
             self.layers.append(layer)
             input_size = neuron_num
 
+    # gets the outputs of all the nodes based on an input
     def test(self, inputs):
         row_input = copy.copy(inputs)
         output = []
@@ -48,11 +56,13 @@ class NeuralNet:
             row_input = copy.copy(layer)
         return output
 
+    # tests the input, and gives a prediction based on it
     def predict(self, inputs):
         results = self.test(inputs)
         outputs = results[-1]
         return outputs.index(max(outputs))
 
+    # compares to the output and does back propagation
     def calc_errors(self, output, targets):
         errors = []
         for i in range(1, len(output) + 1):
@@ -70,6 +80,7 @@ class NeuralNet:
             errors.insert(0, error_layer)
         return errors
 
+    # updates weights based on errors
     def fix_errors(self, inputs, output, errors):
         for i in range(len(errors)):
             for j in range(len(errors[i])):
@@ -80,8 +91,9 @@ class NeuralNet:
                 for k in range(len(self.layers[i][j].weights) - 1):
                     change = self.learning_rate * errors[i][j] * activations[k]
                     self.layers[i][j].weights[k] -= change
-                self.layers[i][j].weights[len(self.layers[i][j].weights) - 1] -= self.learning_rate * errors[i][j] * -1
+                self.layers[i][j].weights[-1] += self.learning_rate * errors[i][j] * -1
 
+    # trains based on a single input
     def train(self, inputs, target):
         targets = [0] * len(self.layers[-1])
         targets[target] = 1
